@@ -63,14 +63,22 @@ export class DbPuppetStore {
 	}
 
 	public async deleteStatusRoom(mxid: string) {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "update_status", table: "puppet_store",
+		});
 		await this.db.Run("UPDATE puppet_mxid_store SET status_room = '' WHERE status_room = $mxid", { mxid });
+		stopTimer();
 	}
 
 	public async getMxidInfo(puppetMxid: string): Promise<IMxidInfo | null> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "get_mx_info", table: "puppet_store",
+		});
 		const row = await this.db.Get("SELECT * FROM puppet_mxid_store WHERE puppet_mxid=$id", { id: puppetMxid });
 		if (!row) {
 			return null;
 		}
+		stopTimer();
 		return {
 			puppetMxid,
 			name: row.name as string | null,
@@ -103,6 +111,9 @@ export class DbPuppetStore {
 	}
 
 	public async setMxidInfo(puppet: IMxidInfo) {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "set_mxid_info", table: "puppet_store",
+		});
 		const exists = await this.db.Get("SELECT * FROM puppet_mxid_store WHERE puppet_mxid=$id", { id: puppet.puppetMxid });
 		let query = "";
 		if (!exists) {
@@ -134,9 +145,13 @@ export class DbPuppetStore {
 			token: puppet.token || null,
 			statusRoom: puppet.statusRoom || null,
 		});
+		stopTimer();
 	}
 
 	public async getAll(): Promise<IPuppet[]> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "select_all", table: "puppet_store",
+		});
 		let result: IPuppet[] = [];
 		if (this.allPuppetIds) {
 			let haveAll = true;
@@ -162,10 +177,14 @@ export class DbPuppetStore {
 				result.push(res);
 			}
 		}
+		stopTimer();
 		return result;
 	}
 
 	public async getForMxid(puppetMxid: string): Promise<IPuppet[]> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "select_for_mx", table: "puppet_store",
+		});
 		const result: IPuppet[] = [];
 		const rows = await this.db.All("SELECT * FROM puppet_store WHERE puppet_mxid=$mxid", { mxid: puppetMxid });
 		for (const r of rows) {
@@ -174,10 +193,14 @@ export class DbPuppetStore {
 				result.push(res);
 			}
 		}
+		stopTimer();
 		return result;
 	}
 
 	public async get(puppetId: number): Promise<IPuppet | null> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "select", table: "puppet_store",
+		});
 		const cached = this.puppetCache.get(puppetId);
 		if (cached) {
 			return cached;
@@ -186,10 +209,14 @@ export class DbPuppetStore {
 		if (!row) {
 			return null;
 		}
+		stopTimer();
 		return this.getRow(row);
 	}
 
 	public async getMxid(puppetId: number): Promise<string> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "select_mxid", table: "puppet_store",
+		});
 		const cached = this.mxidCache.get(puppetId);
 		if (cached) {
 			return cached;
@@ -200,18 +227,26 @@ export class DbPuppetStore {
 		}
 		const mxid = result.puppet_mxid as string;
 		this.mxidCache.set(puppetId, mxid);
+		stopTimer();
 		return mxid;
 	}
 
 	public async setUserId(puppetId: number, userId: string) {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "update_uid", table: "puppet_store",
+		});
 		await this.db.Run("UPDATE puppet_store SET user_id=$uid WHERE puppet_id=$pid", {
 			uid: userId,
 			pid: puppetId,
 		});
 		this.puppetCache.delete(puppetId);
+		stopTimer();
 	}
 
 	public async setData(puppetId: number, data: IPuppetData) {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "update_data", table: "puppet_store",
+		});
 		let dataStr = "";
 		try {
 			dataStr = JSON.stringify(data);
@@ -224,38 +259,55 @@ export class DbPuppetStore {
 			id: puppetId,
 		});
 		this.puppetCache.delete(puppetId);
+		stopTimer();
 	}
 
 	public async setType(puppetId: number, type: PuppetType) {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "update_type", table: "puppet_store",
+		});
 		await this.db.Run("UPDATE puppet_store SET type=$t WHERE puppet_id=$id", {
 			id: puppetId,
 			t: PUPPET_TYPES.indexOf(type),
 		});
 		this.puppetCache.delete(puppetId);
+		stopTimer();
 	}
 
 	public async setIsPublic(puppetId: number, isPublic: boolean) {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "update_visibility", table: "puppet_store",
+		});
 		await this.db.Run("UPDATE puppet_store SET is_public=$p WHERE puppet_id=$id", {
 			id: puppetId,
 			p: Number(isPublic), // booleans are stored as numbers
 		});
 		this.puppetCache.delete(puppetId);
+		stopTimer();
 	}
 
 	public async setAutoinvite(puppetId: number, autoinvite: boolean) {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "update_autoinvite", table: "puppet_store",
+		});
 		await this.db.Run("UPDATE puppet_store SET autoinvite=$a WHERE puppet_id=$id", {
 			id: puppetId,
 			a: Number(autoinvite), // booleans are stored as numbers
 		});
 		this.puppetCache.delete(puppetId);
+		stopTimer();
 	}
 
 	public async setIsGlobalNamespace(puppetId: number, isGlobalNamespace: boolean) {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "update_namespace", table: "puppet_store",
+		});
 		await this.db.Run("UPDATE puppet_store SET is_global_namespace=$is WHERE puppet_id=$id", {
 			id: puppetId,
 			is: Number(isGlobalNamespace), // booleans are stored as numbers
 		});
 		this.puppetCache.delete(puppetId);
+		stopTimer();
 	}
 
 	public async new(
@@ -264,6 +316,9 @@ export class DbPuppetStore {
 		userId?: string,
 		isGlobalNamespace: boolean = false,
 	): Promise<number> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "insert", table: "puppet_store",
+		});
 		let dataStr = "";
 		try {
 			dataStr = JSON.stringify(data);
@@ -284,27 +339,39 @@ export class DbPuppetStore {
 			isGlobalNamespace: Number(isGlobalNamespace),
 		}, "puppet_id");
 		this.allPuppetIds = null;
+		stopTimer();
 		return puppetId;
 	}
 
 	public async delete(puppetId: number) {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "delete", table: "puppet_store",
+		});
 		await this.db.Run("DELETE FROM puppet_store WHERE puppet_id=$id", { id: puppetId });
 		this.mxidCache.delete(puppetId);
 		this.puppetCache.delete(puppetId);
 		this.allPuppetIds = null;
+		stopTimer();
 	}
 
 	public async isGhostInRoom(ghostMxid: string, roomMxid: string): Promise<boolean> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "select_ghost_in_room", table: "puppet_store",
+		});
 		const exists = await this.db.Get(
 			"SELECT * FROM ghosts_joined_chans WHERE ghost_mxid = $ghostMxid AND chan_mxid = $roomMxid"
 			, {
 			ghostMxid,
 			roomMxid,
 		});
+		stopTimer();
 		return exists ? true : false;
 	}
 
 	public async joinGhostToRoom(ghostMxid: string, roomMxid: string) {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "insert_ghost_to_room", table: "puppet_store",
+		});
 		if (await this.isGhostInRoom(ghostMxid, roomMxid)) {
 			return;
 		}
@@ -312,36 +379,53 @@ export class DbPuppetStore {
 			ghostMxid,
 			roomMxid,
 		});
+		stopTimer();
 	}
 
 	public async getGhostsInRoom(room: string): Promise<string[]> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "select_all_ghost_in_room", table: "puppet_store",
+		});
 		const result: string[] = [];
 		const rows = await this.db.All("SELECT * FROM ghosts_joined_chans WHERE chan_mxid = $room", { room });
 		for (const r of rows) {
 			result.push(r.ghost_mxid as string);
 		}
+		stopTimer();
 		return result;
 	}
 
 	public async getRoomsOfGhost(ghost: string): Promise<string[]> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "select_all_rooms_of_ghost", table: "puppet_store",
+		});
 		const result: string[] = [];
 		const rows = await this.db.All("SELECT * FROM ghosts_joined_chans WHERE ghost_mxid = $ghost", { ghost });
 		for (const r of rows) {
 			result.push(r.chan_mxid as string);
 		}
+		stopTimer();
 		return result;
 	}
 
 	public async emptyGhostsInRoom(room: string) {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "delete_ghosts_in_room", table: "puppet_store",
+		});
 		await this.db.Run("DELETE FROM ghosts_joined_chans WHERE chan_mxid = $room", { room });
+		stopTimer();
 	}
 
 	public async leaveGhostFromRoom(ghostMxid: string, roomMxid: string) {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "delete_ghost_in_room", table: "puppet_store",
+		});
 		await this.db.Run("DELETE FROM ghosts_joined_chans " +
 			"WHERE ghost_mxid = $g AND chan_mxid = $c", {
 			g: ghostMxid,
 			c: roomMxid,
 		});
+		stopTimer();
 	}
 
 	private getRow(row: ISqlRow): IPuppet | null {

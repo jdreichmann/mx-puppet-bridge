@@ -31,6 +31,9 @@ export class DbReactionStore {
 	) { }
 
 	public async exists(data: IReactionStoreEntry): Promise<boolean> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "select_exists", table: "reaction_store",
+		});
 		const exists = await this.db.Get(
 			`SELECT 1 FROM reaction_store WHERE puppet_id = $pid AND user_id = $uid
 			AND room_id = $rid AND user_id = $uid AND event_id = $eid AND key = $key`, {
@@ -40,10 +43,14 @@ export class DbReactionStore {
 			eid: data.eventId,
 			key: data.key,
 		});
+		stopTimer();
 		return exists ? true : false;
 	}
 
 	public async insert(data: IReactionStoreEntry): Promise<boolean> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "insert", table: "reaction_store",
+		});
 		if (await this.exists(data)) {
 			return false;
 		}
@@ -57,17 +64,25 @@ export class DbReactionStore {
 			rmxid: data.reactionMxid,
 			key: data.key,
 		});
+		stopTimer();
 		return true;
 	}
 
 	public async getFromReactionMxid(reactionMxid: string): Promise<IReactionStoreEntry | null> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "select_by_reaction_mxid", table: "reaction_store",
+		});
 		const row = await this.db.Get(
 			"SELECT * FROM reaction_store WHERE reaction_mxid = $reactionMxid", { reactionMxid },
 		);
+		stopTimer();
 		return this.getFromRow(row);
 	}
 
 	public async getFromKey(data: IReactionStoreEntry): Promise<IReactionStoreEntry | null> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "select_by_key", table: "reaction_store",
+		});
 		const row = await this.db.Get(
 			`SELECT * FROM reaction_store WHERE puppet_id = $pid AND user_id = $uid AND room_id = $rid
 			AND event_id = $eid AND key = $key`, {
@@ -77,10 +92,14 @@ export class DbReactionStore {
 			eid: data.eventId,
 			key: data.key,
 		});
+		stopTimer();
 		return this.getFromRow(row);
 	}
 
 	public async getForEvent(puppetId: number, eventId: string): Promise<IReactionStoreEntry[]> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "select_for_event", table: "reaction_store",
+		});
 		const rows = await this.db.All(
 			"SELECT * FROM reaction_store WHERE puppet_id = $puppetId AND event_id = $eventId",
 			{ puppetId, eventId },
@@ -92,17 +111,26 @@ export class DbReactionStore {
 				result.push(entry);
 			}
 		}
+		stopTimer();
 		return result;
 	}
 
 	public async delete(reactionMxid: string) {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "delete", table: "reaction_store",
+		});
 		await this.db.Run("DELETE FROM reaction_store WHERE reaction_mxid = $reactionMxid", { reactionMxid });
+		stopTimer();
 	}
 
 	public async deleteForEvent(puppetId: number, eventId: string) {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "delete_for_event", table: "reaction_store",
+		});
 		await this.db.Run("DELETE FROM reaction_store WHERE puppet_id = $puppetId AND event_id = $eventId",
 			{ puppetId, eventId },
 		);
+		stopTimer();
 	}
 
 	private getFromRow(row: ISqlRow | null): IReactionStoreEntry | null {

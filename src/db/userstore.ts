@@ -38,6 +38,11 @@ export class DbUserStore {
 	}
 
 	public async getAll() {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type,
+			type: "select_all",
+			table: "user_store",
+		});
 		const results: object[] = [];
 		const rows = await this.db.All(
 			"SELECT * FROM user_store;",
@@ -54,10 +59,16 @@ export class DbUserStore {
 			};
 			results.push(data);
 		}
+		stopTimer();
 		return results;
 	}
 
 	public async get(puppetId: number, userId: string): Promise<IUserStoreEntry | null> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type,
+			type: "select",
+			table: "user_store",
+		});
 		const cacheKey = `${puppetId};${userId}`;
 		const cached = this.usersCache.get(cacheKey);
 		if (cached) {
@@ -75,10 +86,16 @@ export class DbUserStore {
 		data.avatarMxc = row.avatar_mxc as string | null;
 		data.avatarHash = row.avatar_hash as string | null;
 		this.usersCache.set(cacheKey, data);
+		stopTimer();
 		return data;
 	}
 
 	public async set(data: IUserStoreEntry) {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type,
+			type: "insert_update",
+			table: "user_store",
+		});
 		const exists = await this.db.Get(
 			"SELECT 1 FROM user_store WHERE user_id = $id AND puppet_id = $pid", {id: data.userId, pid: data.puppetId},
 		);
@@ -117,9 +134,15 @@ export class DbUserStore {
 		});
 		const cacheKey = `${data.puppetId};${data.userId}`;
 		this.usersCache.set(cacheKey, data);
+		stopTimer();
 	}
 
 	public async delete(data: IUserStoreEntry) {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type,
+			type: "delete",
+			table: "user_store",
+		});
 		await this.db.Run("DELETE FROM user_store WHERE user_id = $user_id AND puppet_id = $puppet_id", {
 			user_id: data.userId,
 			puppet_id: data.puppetId,
@@ -131,6 +154,7 @@ export class DbUserStore {
 		});
 		const cacheKey = `${data.puppetId};${data.userId}`;
 		this.usersCache.delete(cacheKey);
+		stopTimer();
 	}
 
 	public newRoomOverrideData(puppetId: number, userId: string, roomId: string): IUserStoreRoomOverrideEntry {
@@ -146,6 +170,11 @@ export class DbUserStore {
 		userId: string,
 		roomId: string,
 	): Promise<IUserStoreRoomOverrideEntry | null> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type,
+			type: "get_room_override",
+			table: "user_store",
+		});
 		const row = await this.db.Get(
 			"SELECT * FROM user_store_room_override WHERE user_id = $uid AND puppet_id = $pid AND room_id = $rid", {
 			uid: userId,
@@ -155,10 +184,16 @@ export class DbUserStore {
 		if (!row) {
 			return null;
 		}
+		stopTimer();
 		return this.getRoomOverrideFromRow(row);
 	}
 
 	public async setRoomOverride(data: IUserStoreRoomOverrideEntry) {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type,
+			type: "insert_update_room_override",
+			table: "user_store",
+		});
 		const exists = await this.db.Get(
 			"SELECT 1 FROM user_store_room_override WHERE user_id = $uid AND puppet_id = $pid AND room_id = $rid", {
 			uid: data.userId,
@@ -201,9 +236,15 @@ export class DbUserStore {
 			avatar_mxc: data.avatarMxc || null,
 			avatar_hash: data.avatarHash || null,
 		});
+		stopTimer();
 	}
 
 	public async getAllRoomOverrides(puppetId: number, userId: string): Promise<IUserStoreRoomOverrideEntry[]> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type,
+			type: "select_all_room_override",
+			table: "user_store",
+		});
 		const result: IUserStoreRoomOverrideEntry[] = [];
 		const rows = await this.db.All(
 			"SELECT * FROM user_store_room_override WHERE user_id = $uid AND puppet_id = $pid", {
@@ -216,6 +257,7 @@ export class DbUserStore {
 				result.push(entry);
 			}
 		}
+		stopTimer();
 		return result;
 	}
 

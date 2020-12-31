@@ -36,6 +36,7 @@ export class DbEmoteStore {
 	}
 
 	public async get(puppetId: number, roomId: string | null, emoteId: string): Promise<IEmoteStoreEntry | null> {
+		const stopTimer = this.db.latency.startTimer({ engine: this.db.type, type: "select", table: "emote_store" });
 		if (roomId) {
 			const row = await this.db.Get(
 				"SELECT * FROM emote_store WHERE puppet_id = $pid AND room_id = $rid AND emote_id = $eid LIMIT 1", {
@@ -43,6 +44,7 @@ export class DbEmoteStore {
 				rid: roomId,
 				eid: emoteId,
 			});
+			stopTimer();
 			return this.getFromRow(row);
 		} else {
 			const row = await this.db.Get(
@@ -50,11 +52,13 @@ export class DbEmoteStore {
 				pid: puppetId,
 				eid: emoteId,
 			});
+			stopTimer();
 			return this.getFromRow(row);
 		}
 	}
 
 	public async getByMxc(puppetId: number, roomId: string | null, mxid: string): Promise<IEmoteStoreEntry | null> {
+		const stopTimer = this.db.latency.startTimer({ engine: this.db.type, type: "select_by_mxc", table: "emote_store" });
 		if (roomId) {
 			const row = await this.db.Get(
 				"SELECT * FROM emote_store WHERE puppet_id = $pid AND room_id = $rid AND avatar_mxc = $mxid LIMIT 1", {
@@ -62,6 +66,7 @@ export class DbEmoteStore {
 				rid: roomId,
 				mxid,
 			});
+			stopTimer();
 			return this.getFromRow(row);
 		} else {
 			const row = await this.db.Get(
@@ -69,11 +74,13 @@ export class DbEmoteStore {
 				pid: puppetId,
 				mxid,
 			});
+			stopTimer();
 			return this.getFromRow(row);
 		}
 	}
 
 	public async getForRoom(puppetId: number, roomId: string): Promise<IEmoteStoreEntry[]> {
+		const stopTimer = this.db.latency.startTimer({ engine: this.db.type, type: "select_by_room", table: "emote_store" });
 		const rows = await this.db.All("SELECT * FROM emote_store WHERE puppet_id = $pid AND room_id = $rid", {
 			pid: puppetId,
 			rid: roomId,
@@ -85,10 +92,12 @@ export class DbEmoteStore {
 				result.push(res);
 			}
 		}
+		stopTimer();
 		return result;
 	}
 
 	public async set(data: IEmoteStoreEntry) {
+		const stopTimer = this.db.latency.startTimer({ engine: this.db.type, type: "insert_update", table: "emote_store" });
 		let exists: ISqlRow | null = null;
 		if (data.roomId) {
 			exists = await this.db.Get(
@@ -146,6 +155,7 @@ export class DbEmoteStore {
 			avatar_hash: data.avatarHash || null,
 			data: JSON.stringify(data.data || {}),
 		});
+		stopTimer();
 	}
 
 	private getFromRow(row: ISqlRow | null): IEmoteStoreEntry | null {

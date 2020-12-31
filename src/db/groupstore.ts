@@ -44,6 +44,9 @@ export class DbGroupStore {
 		groupId: string,
 		ignoreCache: boolean = false,
 	): Promise<IGroupStoreEntry | null> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "select_by_remote", table: "group_store",
+		});
 		if (!ignoreCache) {
 			const cached = this.groupsCache.get(`${puppetId};${groupId}`);
 			if (cached) {
@@ -55,10 +58,15 @@ export class DbGroupStore {
 			groupId,
 			puppetId,
 		});
-		return await this.getFromRow(row);
+		const result =  await this.getFromRow(row);
+		stopTimer();
+		return result;
 	}
 
 	public async getByPuppetId(puppetId: number): Promise<IGroupStoreEntry[]> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "select_by_puppet", table: "group_store",
+		});
 		const rows = await this.db.All(
 			"SELECT * FROM group_store WHERE puppet_id = $puppetId", {
 			puppetId,
@@ -70,17 +78,26 @@ export class DbGroupStore {
 				results.push(res);
 			}
 		}
+		stopTimer();
 		return results;
 	}
 
 	public async getByMxid(mxid: string): Promise<IGroupStoreEntry | null> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "select_by_mxid", table: "group_store",
+		});
 		const row = await this.db.Get(
 			"SELECT * FROM group_store WHERE mxid = $mxid", { mxid },
 		);
-		return await this.getFromRow(row);
+		const result = await this.getFromRow(row);
+		stopTimer();
+		return result;
 	}
 
 	public async set(data: IGroupStoreEntry) {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "insert_update", table: "group_store",
+		});
 		// first de-dupe the room IDs
 		const uniqueRoomIds: string[] = [];
 		for (const roomId of data.roomIds) {
@@ -194,9 +211,13 @@ export class DbGroupStore {
 			}
 		}
 		this.groupsCache.set(`${data.puppetId};${data.groupId}`, data);
+		stopTimer();
 	}
 
 	public async delete(data: IGroupStoreEntry) {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "delete", table: "group_store",
+		});
 		await this.db.Run(
 			"DELETE FROM group_store WHERE mxid = $mxid", { mxid: data.mxid },
 		);
@@ -206,9 +227,13 @@ export class DbGroupStore {
 			groupId: data.groupId,
 		});
 		this.groupsCache.delete(`${data.puppetId};${data.groupId}`);
+		stopTimer();
 	}
 
 	private async getFromRow(row: ISqlRow | null): Promise<IGroupStoreEntry | null> {
+		const stopTimer = this.db.latency.startTimer({
+			engine: this.db.type, type: "select_from_row", table: "group_store",
+		});
 		if (!row) {
 			return null;
 		}
@@ -236,6 +261,7 @@ export class DbGroupStore {
 		}
 
 		this.groupsCache.set(`${data.puppetId};${data.groupId}`, data);
+		stopTimer();
 		return data;
 	}
 }

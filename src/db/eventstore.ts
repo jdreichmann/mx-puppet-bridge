@@ -22,23 +22,28 @@ export class DbEventStore {
 	) { }
 
 	public async insert(puppetId: number, roomId: string, matrixId: string, remoteId: string) {
+		const stopTimer = this.db.latency.startTimer({ engine: this.db.type, type: "insert", table: "event_store" });
 		await this.db.Run("INSERT INTO event_store (puppet_id, room_id, matrix_id, remote_id) VALUES ($p, $room, $m, $r)", {
 			p: puppetId,
 			room: roomId,
 			m: matrixId,
 			r: remoteId,
 		});
+		stopTimer();
 	}
 
 	public async remove(puppetId: number, roomId: string, remoteId: string) {
+		const stopTimer = this.db.latency.startTimer({ engine: this.db.type, type: "remove", table: "event_store" });
 		await this.db.Run("DELETE FROM event_store WHERE puppet_id = $p AND room_id = $room AND remote_id = $r", {
 			p: puppetId,
 			room: roomId,
 			r: remoteId,
 		});
+		stopTimer();
 	}
 
 	public async getMatrix(puppetId: number, roomId: string, remoteId: string): Promise<string[]> {
+		const stopTimer = this.db.latency.startTimer({ engine: this.db.type, type: "select_matrix", table: "event_store"});
 		const result: string[] = [];
 		const rows = await this.db.All("SELECT * FROM event_store WHERE puppet_id=$p AND room_id = $room AND remote_id=$r", {
 			p: puppetId,
@@ -48,10 +53,12 @@ export class DbEventStore {
 		for (const row of rows) {
 			result.push(row.matrix_id as string);
 		}
+		stopTimer();
 		return result;
 	}
 
 	public async getRemote(puppetId: number, roomId: string, matrixId: string): Promise<string[]> {
+		const stopTimer = this.db.latency.startTimer({ engine: this.db.type, type: "select_remote", table: "event_store"});
 		const result: string[] = [];
 		const rows = await this.db.All(
 			"SELECT * FROM event_store WHERE puppet_id = $p AND room_id = $room AND matrix_id = $m", {
@@ -62,6 +69,7 @@ export class DbEventStore {
 		for (const row of rows) {
 			result.push(row.remote_id as string);
 		}
+		stopTimer();
 		return result;
 	}
 }

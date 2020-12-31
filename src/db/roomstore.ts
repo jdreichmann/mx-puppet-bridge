@@ -46,6 +46,7 @@ export class DbRoomStore {
 	}
 
 	public async getAll(): Promise<IRoomStoreEntry[]> {
+		const stopTimer = this.db.latency.startTimer({ engine: this.db.type, type: "select_all", table: "room_store" });
 		const rows = await this.db.All("SELECT * FROM room_store");
 		const results: IRoomStoreEntry[] = [];
 		for (const row of rows) {
@@ -54,10 +55,12 @@ export class DbRoomStore {
 				results.push(res);
 			}
 		}
+		stopTimer();
 		return results;
 	}
 
 	public async getByRemote(puppetId: number, roomId: string): Promise<IRoomStoreEntry | null> {
+		const stopTimer = this.db.latency.startTimer({ engine: this.db.type, type: "select_by_remote", table: "room_store" });
 		const cached = this.remoteCache.get(`${puppetId};${roomId}`);
 		if (cached) {
 			return cached;
@@ -67,10 +70,12 @@ export class DbRoomStore {
 			room_id: roomId,
 			puppet_id: puppetId,
 		});
+		stopTimer();
 		return this.getFromRow(row);
 	}
 
 	public async getByPuppetId(puppetId: number): Promise<IRoomStoreEntry[]> {
+		const stopTimer = this.db.latency.startTimer({ engine: this.db.type, type: "select_by_puppet", table: "room_store" });
 		const rows = await this.db.All(
 			"SELECT * FROM room_store WHERE puppet_id = $puppet_id", {
 			puppet_id: puppetId,
@@ -82,10 +87,12 @@ export class DbRoomStore {
 				results.push(res);
 			}
 		}
+		stopTimer();
 		return results;
 	}
 
 	public async getByMxid(mxid: string): Promise<IRoomStoreEntry | null> {
+		const stopTimer = this.db.latency.startTimer({ engine: this.db.type, type: "select_by_mxid", table: "room_store" });
 		const cached = this.mxidCache.get(mxid);
 		if (cached) {
 			return cached;
@@ -93,10 +100,12 @@ export class DbRoomStore {
 		const row = await this.db.Get(
 			"SELECT * FROM room_store WHERE mxid = $mxid", { mxid },
 		);
+		stopTimer();
 		return this.getFromRow(row);
 	}
 
 	public async set(data: IRoomStoreEntry) {
+		const stopTimer = this.db.latency.startTimer({ engine: this.db.type, type: "insert_update", table: "room_store" });
 		const exists = await this.db.Get(
 			"SELECT * FROM room_store WHERE mxid = $mxid", {mxid: data.mxid},
 		);
@@ -164,9 +173,11 @@ export class DbRoomStore {
 		});
 		this.remoteCache.set(`${data.puppetId};${data.roomId}`, data);
 		this.mxidCache.set(data.mxid, data);
+		stopTimer();
 	}
 
 	public async delete(data: IRoomStoreEntry) {
+		const stopTimer = this.db.latency.startTimer({ engine: this.db.type, type: "delete", table: "room_store" });
 		await this.db.Run(
 			"DELETE FROM room_store WHERE mxid = $mxid", { mxid: data.mxid },
 		);
@@ -176,9 +187,11 @@ export class DbRoomStore {
 		this.remoteCache.delete(`${data.puppetId};${data.roomId}`);
 		this.mxidCache.delete(data.mxid);
 		this.opCache.delete(data.mxid);
+		stopTimer();
 	}
 
 	public async toGlobalNamespace(puppetId: number, roomId: string) {
+		const stopTimer = this.db.latency.startTimer({ engine: this.db.type, type: "update_namespace", table: "room_store" });
 		const exists = await this.getByRemote(-1, roomId);
 		if (exists) {
 			return;
@@ -194,15 +207,18 @@ export class DbRoomStore {
 		this.remoteCache.delete(`${puppetId};${roomId}`);
 		this.mxidCache.delete(room.mxid);
 		this.opCache.delete(room.mxid);
+		stopTimer();
 	}
 
 	public async setRoomOp(roomMxid: string, userMxid: string) {
+		const stopTimer = this.db.latency.startTimer({ engine: this.db.type, type: "update_room_op", table: "room_store" });
 		const row = await this.db.Get("SELECT * FROM chan_op WHERE chan_mxid=$chan LIMIT 1", {
 			chan: roomMxid,
 		});
 		if (row) {
 			if ((row.user_mxid as string) === userMxid) {
 				// nothing to do, we are already set
+				stopTimer();
 				return;
 			}
 			await this.db.Run("DELETE FROM chan_op WHERE chan_mxid=$chan", {
@@ -214,9 +230,11 @@ export class DbRoomStore {
 			user: userMxid,
 		});
 		this.opCache.set(roomMxid, userMxid);
+		stopTimer();
 	}
 
 	public async getRoomOp(roomMxid: string): Promise<string|null> {
+		const stopTimer = this.db.latency.startTimer({ engine: this.db.type, type: "select_room_op", table: "room_store" });
 		const cached = this.opCache.get(roomMxid);
 		if (cached) {
 			return cached;
@@ -229,6 +247,7 @@ export class DbRoomStore {
 		}
 		const userMxid = row.user_mxid as string;
 		this.opCache.set(roomMxid, userMxid);
+		stopTimer();
 		return userMxid;
 	}
 
